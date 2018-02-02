@@ -1,0 +1,97 @@
+//fetching data via volley
+    private void update_profile(final String mobile_countryCode, final String fullname_en, final String fullname_ar,
+                                final String emailAddress, final String mobileNumber) {
+
+        progressDialog.show();
+        String tag_json_obj = "user_profile_edit";
+        String url = AppController.BASE_URL + "json_user_profile_edit.php";
+
+        VolleyMultipartRequest jsObjRequest = new VolleyMultipartRequest
+                (Request.Method.POST, url, new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        // TODO Auto-generated method stub
+                        String message;
+                        progressDialog.dismiss();
+                        String resultResponse = new String(response.data);
+                        if (resultResponse != null) {
+                            try {
+                                JSONObject jsonObject = new JSONObject(resultResponse);
+                                String status = jsonObject.getString("status");
+                                if (status.equalsIgnoreCase("success")) {
+                                    JSONObject jsonDataObj = jsonObject.getJSONObject("data");
+                                    Gson gson = new Gson();
+                                    String userData = gson.toJson(jsonDataObj);
+                                    sharedPrefrences_manager.setValues(sharedPrefrences_manager.USER_DATA, userData);
+                                    if (sharedPrefrences_manager.getValue(sharedPrefrences_manager.LANGUAGE_TYPE, "en").equalsIgnoreCase("en"))
+                                        sharedPrefrences_manager.setValues(sharedPrefrences_manager.USER_NAME, jsonDataObj.getString("name_en"));
+                                    else
+                                        sharedPrefrences_manager.setValues(sharedPrefrences_manager.USER_NAME, jsonDataObj.getString("name_ar"));
+                                    sharedPrefrences_manager.setValues(sharedPrefrences_manager.USER_IMAGE, jsonDataObj.getString("base_url") + jsonDataObj.getString("profile_image"));
+                                    ///////menu image view update
+                                    Picasso.with(getContext())
+                                            .load(sharedPrefrences_manager.getValue(sharedPrefrences_manager.USER_IMAGE, ""))
+                                            .error(R.drawable.default_user_profile)
+                                            .placeholder(R.drawable.default_user_profile)
+                                            //.fit()
+                                            .into(Menu_Fragment.imageView_user);
+                                    Menu_Fragment.txt_name.setText(sharedPrefrences_manager.getValue(sharedPrefrences_manager.USER_NAME, ""));
+
+                                } else {
+                                    message = jsonObject.getString("info");
+                                    appUtilities.initAlertDialog(getContext(), message);
+                                    appUtilities.toastMsg(message);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                appUtilities.toastMsg("An error occured!");
+                            }
+                        }
+                    }
+                }, new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        // TODO Auto-generated method stub
+                        error.printStackTrace();
+                        System.out.print("gdggdgduywgdygwduygwuyggweyigygweyfgguywgf");
+                        progressDialog.dismiss();
+                    }
+                }) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                HashMap<String, String> hashMap = new HashMap<>();
+                // hashMap.put("lang", sharedPreferences.getString(AppController.LANGUAGE_NAME, "en"));
+                hashMap.put("userid", sharedPrefrences_manager.getValue(sharedPrefrences_manager.USER_ID, ""));
+                hashMap.put("fullname_en", fullname_en);
+                hashMap.put("fullname_ar", fullname_ar);
+                hashMap.put("email", emailAddress);
+                hashMap.put("mobile_cc", mobile_countryCode);
+                hashMap.put("mobile", mobileNumber);
+                hashMap.put("refference", edittext_refrence_no.getText().toString());
+                hashMap.put("device_id", sharedPrefrences_manager.getValue(sharedPrefrences_manager.DEVICE_TOKEN, ""));
+                hashMap.put("device_type", AppController.DEVICE_TYPE);
+                if (!changed)
+                    hashMap.put("profileimg_hidden", user_data_model.getProfile_image());
+                return hashMap;
+            }
+
+            //lang,userid,fullname_en,fullname_ar,mobile_cc,mobile,email,device_id,device_type,profileimg,profileimg_hidden
+            @Override
+            protected Map<String, VolleyMultipartRequest.DataPart> getByteData() {
+                Map<String, VolleyMultipartRequest.DataPart> params = new HashMap<>();
+                Drawable profile_img = new BitmapDrawable(getResources(), Edit_Profile_fragment.profile_img);
+                if (profile_img != null) {
+                    System.out.println("image updating nt null");
+                    if (changed)
+                        params.put("profileimg", new VolleyMultipartRequest.DataPart("notes_image.png", AppHelper.getFileDataFromDrawable(getContext(), profile_img), "image/png"));
+
+                }
+                return params;
+            }
+        };
+        jsObjRequest.setRetryPolicy(new DefaultRetryPolicy(
+                60000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        AppController.getInstance().addToRequestQueue(jsObjRequest, tag_json_obj);
+    }
